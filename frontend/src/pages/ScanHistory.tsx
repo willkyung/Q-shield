@@ -62,7 +62,9 @@ export const ScanHistory = () => {
     const interval = setInterval(() => {
       // ref를 사용하여 최신 scans 상태 확인 (stale closure 방지)
       const currentScans = scansRef.current
-      const hasInProgress = currentScans.some((scan) => scan.status === 'IN_PROGRESS')
+      const hasInProgress = currentScans.some(
+        (scan) => scan.status === 'RUNNING' || scan.status === 'QUEUED'
+      )
       if (hasInProgress) {
         loadScanHistory(false) // 백그라운드 새로고침
       }

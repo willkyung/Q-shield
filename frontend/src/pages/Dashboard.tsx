@@ -130,9 +130,10 @@ export const Dashboard = () => {
     )
   }
 
-  const isScanning = scanStatus?.status === 'PENDING' || scanStatus?.status === 'IN_PROGRESS'
+  const isScanning = scanStatus?.status === 'QUEUED' || scanStatus?.status === 'RUNNING'
   const isCompleted = scanStatus?.status === 'COMPLETED'
   const isFailed = scanStatus?.status === 'FAILED'
+  const progressPercentage = scanStatus ? Math.round(scanStatus.progress * 100) : 0
 
   return (
     <div className="min-h-screen bg-[#020617] text-white">
@@ -176,7 +177,7 @@ export const Dashboard = () => {
                   <div>
                     <h2 className="text-2xl font-semibold text-white">Scanning in Progress</h2>
                     <p className="text-sm text-slate-400 mt-1">
-                      {scanStatus.status === 'PENDING' ? 'Preparing scan...' : 'Analyzing repository...'}
+                      {scanStatus.message}
                     </p>
                   </div>
                 </div>
@@ -185,12 +186,12 @@ export const Dashboard = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-300">Progress</span>
-                    <span className="text-white font-semibold">{scanStatus.progress}%</span>
+                    <span className="text-white font-semibold">{progressPercentage}%</span>
                   </div>
                   <div className="h-4 bg-white/5 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500"
-                      style={{ width: `${scanStatus.progress}%` }}
+                      style={{ width: `${progressPercentage}%` }}
                     />
                   </div>
                 </div>
@@ -235,23 +236,23 @@ export const Dashboard = () => {
                   </div>
                   <h2 className="text-2xl font-semibold text-white">PQC Readiness Score</h2>
                 </div>
-                <PqcReadinessGauge score={inventory.pqcReadinessScore} />
+                <PqcReadinessGauge score={inventory.pqc_readiness_score} />
               </div>
 
               {/* Algorithm Ratios */}
-              {Object.keys(inventory.algorithmRatios).length > 0 && (
+              {inventory.algorithm_ratios.length > 0 && (
                 <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-white mb-4">Algorithm Distribution</h3>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {Object.entries(inventory.algorithmRatios).map(([algorithm, ratio]) => (
+                    {inventory.algorithm_ratios.map((ratio) => (
                       <div
-                        key={algorithm}
+                        key={ratio.name}
                         className="bg-white/5 rounded-lg p-4 border border-white/10 text-center"
                       >
                         <div className="text-2xl font-bold text-white mb-1">
-                          {(ratio * 100).toFixed(0)}%
+                          {(ratio.ratio * 100).toFixed(0)}%
                         </div>
-                        <div className="text-xs text-slate-400">{algorithm}</div>
+                        <div className="text-xs text-slate-400">{ratio.name}</div>
                       </div>
                     ))}
                   </div>
@@ -263,10 +264,10 @@ export const Dashboard = () => {
                 <div className="flex items-center gap-3 mb-4">
                   <h2 className="text-2xl font-semibold text-white">Cryptographic Assets</h2>
                   <span className="px-3 py-1 bg-indigo-500/10 border border-indigo-500/30 rounded-full text-sm text-indigo-400">
-                    {inventory.inventory.length} items
+                    {inventory.inventory_table.length} items
                   </span>
                 </div>
-                <InventoryTable inventory={inventory.inventory} />
+                <InventoryTable inventory={inventory.inventory_table} />
               </div>
             </div>
           )}

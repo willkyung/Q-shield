@@ -3,13 +3,13 @@ import { logInfo, logError } from '../utils/logger'
 /**
  * 스캔 상태 타입
  */
-export type ScanStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
+export type ScanStatus = 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED'
 
 /**
  * 스캔 시작 요청 타입
  */
 export interface InitiateScanRequest {
-  githubUrl: string
+  github_url: string
 }
 
 /**
@@ -17,15 +17,16 @@ export interface InitiateScanRequest {
  */
 export interface InitiateScanResponse {
   uuid: string
+  status: ScanStatus
 }
 
 /**
  * 스캔 상태 응답 타입
  */
 export interface ScanStatusResponse {
-  uuid: string
   status: ScanStatus
   progress: number
+  message: string
 }
 
 /**
@@ -106,7 +107,7 @@ export const scanService = {
     const newScan: ScanHistoryItem = {
       uuid,
       githubUrl,
-      status: 'PENDING',
+      status: 'QUEUED',
       progress: 0,
       createdAt: now,
       updatedAt: now,
@@ -117,7 +118,7 @@ export const scanService = {
     existingScans.unshift(newScan) // 최신순으로 앞에 추가
     saveScansToStorage(existingScans)
 
-    return { uuid }
+    return { uuid, status: newScan.status }
   },
 
   /**
@@ -138,33 +139,42 @@ export const scanService = {
     const scan = scans[scanIndex]
 
     // 폴링 시뮬레이션: progress를 점진적으로 증가 (데모용 빠른 속도)
-    if (scan.status === 'PENDING' || scan.status === 'IN_PROGRESS') {
+    if (scan.status === 'QUEUED' || scan.status === 'RUNNING') {
       // 진행률 증가 (25-35%씩 랜덤하게 - 데모용 빠른 속도)
-      const increment = 25 + Math.random() * 10
-      const newProgress = Math.min(100, scan.progress + increment)
+      const increment = 0.25 + Math.random() * 0.1
+      const newProgress = Math.min(1, scan.progress + increment)
 
       // 상태 업데이트
-      if (scan.status === 'PENDING' && newProgress > 0) {
-        scan.status = 'IN_PROGRESS'
+      if (scan.status === 'QUEUED' && newProgress > 0) {
+        scan.status = 'RUNNING'
       }
 
-      scan.progress = Math.round(newProgress)
+      scan.progress = Number(newProgress.toFixed(2))
       scan.updatedAt = new Date().toISOString()
 
       // 100%가 되면 COMPLETED로 변경
-      if (scan.progress >= 100) {
+      if (scan.progress >= 1) {
         scan.status = 'COMPLETED'
-        scan.progress = 100
+        scan.progress = 1
       }
 
       // localStorage에 저장
       saveScansToStorage(scans)
     }
 
+    const message =
+      scan.status === 'QUEUED'
+        ? 'Queued'
+        : scan.status === 'RUNNING'
+          ? 'Analyzing crypto usage...'
+          : scan.status === 'COMPLETED'
+            ? 'Completed'
+            : 'Failed'
+
     return {
-      uuid: scan.uuid,
       status: scan.status,
       progress: scan.progress,
+      message,
     }
   },
 

@@ -32,13 +32,13 @@ const getStatusConfig = (status: ScanStatus) => {
         borderColor: 'border-emerald-500/30',
         label: 'Completed',
       }
-    case 'IN_PROGRESS':
+    case 'RUNNING':
       return {
         icon: Loader2,
         color: 'text-blue-400',
         bgColor: 'bg-blue-500/10',
         borderColor: 'border-blue-500/30',
-        label: 'In Progress',
+        label: 'Running',
       }
     case 'FAILED':
       return {
@@ -48,13 +48,13 @@ const getStatusConfig = (status: ScanStatus) => {
         borderColor: 'border-red-500/30',
         label: 'Failed',
       }
-    case 'PENDING':
+    case 'QUEUED':
       return {
         icon: Clock,
         color: 'text-yellow-400',
         bgColor: 'bg-yellow-500/10',
         borderColor: 'border-yellow-500/30',
-        label: 'Pending',
+        label: 'Queued',
       }
     default:
       return {
@@ -135,12 +135,12 @@ export const ScanHistoryList = ({ scans, onRefresh }: ScanHistoryListProps) => {
 
   // 진행 중인 스캔 자동 새로고침
   useEffect(() => {
-    const hasInProgress = scans.some((scan) => scan.status === 'IN_PROGRESS')
+    const hasInProgress = scans.some((scan) => scan.status === 'RUNNING' || scan.status === 'QUEUED')
     if (!hasInProgress) return
 
     const interval = setInterval(() => {
       scans.forEach((scan) => {
-        if (scan.status === 'IN_PROGRESS') {
+        if (scan.status === 'RUNNING' || scan.status === 'QUEUED') {
           refreshScanStatus(scan.uuid)
         }
       })
@@ -170,6 +170,7 @@ export const ScanHistoryList = ({ scans, onRefresh }: ScanHistoryListProps) => {
         const StatusIcon = statusConfig.icon
         const isRefreshing = refreshingUuids.has(scan.uuid)
         const isCopied = copiedUuid === scan.uuid
+        const progressPercentage = Math.round(scan.progress * 100)
 
         return (
           <div
@@ -186,7 +187,7 @@ export const ScanHistoryList = ({ scans, onRefresh }: ScanHistoryListProps) => {
                   >
                     <StatusIcon
                       className={`w-5 h-5 ${statusConfig.color} ${
-                        scan.status === 'IN_PROGRESS' ? 'animate-spin' : ''
+                        scan.status === 'RUNNING' ? 'animate-spin' : ''
                       }`}
                     />
                   </div>
@@ -195,8 +196,8 @@ export const ScanHistoryList = ({ scans, onRefresh }: ScanHistoryListProps) => {
                   >
                     {statusConfig.label}
                   </span>
-                  {scan.status === 'IN_PROGRESS' && (
-                    <span className="text-sm text-slate-400 font-mono">{scan.progress}%</span>
+                  {scan.status === 'RUNNING' && (
+                    <span className="text-sm text-slate-400 font-mono">{progressPercentage}%</span>
                   )}
                 </div>
 
@@ -241,12 +242,12 @@ export const ScanHistoryList = ({ scans, onRefresh }: ScanHistoryListProps) => {
                 </div>
 
                 {/* Progress Bar */}
-                {scan.status === 'IN_PROGRESS' && (
+                {scan.status === 'RUNNING' && (
                   <div className="pt-2">
                     <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500"
-                        style={{ width: `${scan.progress}%` }}
+                        style={{ width: `${progressPercentage}%` }}
                       />
                     </div>
                   </div>

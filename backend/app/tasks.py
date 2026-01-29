@@ -7,6 +7,26 @@ from app.config import DATABASE_URL_SYNC
 from app.models import Scan, InventorySnapshot, HeatmapSnapshot, Recommendation
 from app.celery_app import celery_app
 
+ERROR_SCANNER = "SCANNER_ERROR"
+ERROR_CLONE = "CLONE_ERROR"
+ERROR_PARSE = "PARSE_ERROR"
+ERROR_UNKNOWN = "UNKNOWN_ERROR"
+
+
+class ScanPipelineError(RuntimeError):
+    def __init__(self, category: str, message: str) -> None:
+        super().__init__(message)
+        self.category = category
+        self.message = message
+
+
+def _fail_scan(db, scan: Scan, category: str, message: str) -> None:
+    scan.status = "FAILED"
+    scan.message = f"Failed: {category} - {message}"
+    scan.error_log = message
+    db.commit()
+
+
 # Celery는 별도 프로세스라 get_db(Dependency) 못 씀 -> 엔진을 따로 만든다
 engine = create_engine(DATABASE_URL_SYNC, echo=False, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -95,7 +115,7 @@ def run_scan_pipeline(scan_uuid: str):
             return
 
         # 1) 시작
-        scan.status = "IN_PROGRESS"
+        scan.status = "RUNNING"
         scan.progress = 0.05
         scan.message = "Cloning repository..."
         db.commit()
@@ -156,11 +176,11 @@ def run_scan_pipeline(scan_uuid: str):
             else:
                 scan = None
             if scan:
-                scan.status = "FAILED"
                 scan.progress = scan.progress or 0.0
-                scan.message = f"Failed: {e}"
-                scan.error_log = str(e)
-                db.commit()
+                if isinstance(e, ScanPipelineError):
+                    _fail_scan(db, scan, e.category, e.message)
+                else:
+                    _fail_scan(db, scan, ERROR_UNKNOWN, str(e))
         except Exception:
             pass
         raise

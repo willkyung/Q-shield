@@ -9,7 +9,8 @@ from app.models import Scan
 from app.models import InventorySnapshot, HeatmapSnapshot, Recommendation
 from app.schemas import (
     ScanCreateRequest, ScanCreateResponse,
-    ScanStatusResponse, ScanListItem, ScanListResponse
+    ScanStatusResponse, ScanListItem, ScanListResponse,
+    InventoryResponse, HeatmapNode, RecommendationResponse
 )
 from app.tasks import run_scan_pipeline
 
@@ -75,7 +76,7 @@ def list_scans(db: Session = Depends(get_db)):
 
 
 
-@router.get("/{uuid}/inventory")
+@router.get("/{uuid}/inventory", response_model=InventoryResponse)
 def get_inventory(uuid: str, db: Session = Depends(get_db)):
     try:
         scan_uuid = UUID(uuid)
@@ -84,7 +85,7 @@ def get_inventory(uuid: str, db: Session = Depends(get_db)):
 
     inv = db.query(InventorySnapshot).filter(InventorySnapshot.scan_uuid == scan_uuid).first()
     if not inv:
-        return {"pqc_readiness_score": 0, "algorithm_ratios": [], "inventory_table": []}
+        return InventoryResponse(pqc_readiness_score=0, algorithm_ratios=[], inventory_table=[])
 
     return {
         "pqc_readiness_score": inv.pqc_readiness_score,
@@ -93,7 +94,7 @@ def get_inventory(uuid: str, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/{uuid}/heatmap")
+@router.get("/{uuid}/heatmap", response_model=HeatmapNode)
 def get_heatmap(uuid: str, db: Session = Depends(get_db)):
     try:
         scan_uuid = UUID(uuid)
@@ -102,12 +103,12 @@ def get_heatmap(uuid: str, db: Session = Depends(get_db)):
 
     heat = db.query(HeatmapSnapshot).filter(HeatmapSnapshot.scan_uuid == scan_uuid).first()
     if not heat:
-        return {"name": "", "path": "", "type": "dir", "risk_score": 0.0, "children": []}
+        return HeatmapNode(name="", path="", type="dir", risk_score=0.0, children=[])
 
     return heat.tree
 
 
-@router.get("/{uuid}/recommendations")
+@router.get("/{uuid}/recommendations", response_model=list[RecommendationResponse])
 def get_recommendations(
     uuid: str,
     db: Session = Depends(get_db),
