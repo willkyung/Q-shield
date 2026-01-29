@@ -1,26 +1,30 @@
-import { apiClient } from '../api'
 import { handleError, type AppError } from '../utils/errorHandler'
 import { logError } from '../utils/logger'
 
 /**
- * 암호화 자산 타입
+ * 알고리즘 비율 타입
  */
-export interface CryptographicAsset {
-  id: string
-  algorithmType: string
-  filePath: string
-  lineNumbers: number[]
-  riskScore: number
+export interface AlgorithmRatio {
+  name: string
+  ratio: number
+}
+
+/**
+ * 인벤토리 테이블 아이템 타입
+ */
+export interface InventoryTableItem {
+  algorithm: string
+  count: number
+  locations: string[]
 }
 
 /**
  * 인벤토리 응답 타입
  */
 export interface InventoryResponse {
-  uuid: string
-  pqcReadinessScore: number // 0.0-10.0
-  algorithmRatios: Record<string, number>
-  inventory: CryptographicAsset[]
+  pqc_readiness_score: number // 0.0-10.0
+  algorithm_ratios: AlgorithmRatio[]
+  inventory_table: InventoryTableItem[]
 }
 
 /**
@@ -57,34 +61,22 @@ export const inventoryService = {
 
       // 요구사항에 맞는 Mock 인벤토리 데이터
       const mockInventory: InventoryResponse = {
-        uuid,
-        pqcReadinessScore: 7.2, // 72점 (중간 위험 수준)
-        algorithmRatios: {
-          'RSA-1024': 0.4,
-          'SHA-1': 0.35,
-          'AES-128': 0.25,
-        },
-        inventory: [
+        pqc_readiness_score: 6.8,
+        algorithm_ratios: [
+          { name: 'RSA', ratio: 0.55 },
+          { name: 'ECC', ratio: 0.25 },
+          { name: 'AES', ratio: 0.2 },
+        ],
+        inventory_table: [
           {
-            id: '1',
-            algorithmType: 'RSA-1024',
-            filePath: 'src/auth.c',
-            lineNumbers: [15, 23, 45],
-            riskScore: 9.2, // HIGH 위험도
+            algorithm: 'RSA',
+            count: 12,
+            locations: ['src/auth.py:42', 'src/crypto/rsa.py:10'],
           },
           {
-            id: '2',
-            algorithmType: 'SHA-1',
-            filePath: 'src/utils/hash.py',
-            lineNumbers: [12, 34, 56],
-            riskScore: 7.5, // MEDIUM 위험도
-          },
-          {
-            id: '3',
-            algorithmType: 'AES-128',
-            filePath: 'config/settings.json',
-            lineNumbers: [8],
-            riskScore: 4.8, // LOW 위험도
+            algorithm: 'ECC',
+            count: 5,
+            locations: ['src/tls.py:88'],
           },
         ],
       }

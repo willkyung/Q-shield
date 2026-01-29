@@ -14,7 +14,7 @@ class Scan(Base):
     github_url: Mapped[str] = mapped_column(String(500), nullable=False)
     repo_name: Mapped[str] = mapped_column(String(200), nullable=False)
 
-    # 프론트 명세: QUEUED | IN_PROGRESS | COMPLETED | FAILED
+    # 프론트 명세: QUEUED | RUNNING | COMPLETED | FAILED
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="QUEUED")
 
     # 프론트 명세: 0.0 ~ 1.0

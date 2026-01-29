@@ -21,14 +21,14 @@ paths:
             schema:
               type: object
               properties:
-                githubUrl:
+                github_url:
                   type: string
                   format: url
                   description: The GitHub repository URL to be scanned.
               required:
-                - githubUrl
+                - github_url
       responses:
-        '202':
+        '200':
           description: Scan initiation accepted. Returns the UUID of the new scan.
           content:
             application/json:
@@ -39,6 +39,10 @@ paths:
                     type: string
                     format: uuid
                     description: Unique identifier for the initiated scan.
+                  status:
+                    type: string
+                    enum: [QUEUED, RUNNING, COMPLETED, FAILED]
+                    description: Current status of the scan.
         '400':
           description: Invalid GitHub URL provided.
         '500':
@@ -64,19 +68,19 @@ paths:
               schema:
                 type: object
                 properties:
-                  uuid:
-                    type: string
-                    format: uuid
                   status:
                     type: string
-                    enum: [PENDING, IN_PROGRESS, COMPLETED, FAILED]
+                    enum: [QUEUED, RUNNING, COMPLETED, FAILED]
                     description: Current status of the scan.
                   progress:
-                    type: integer
-                    format: int32
+                    type: number
+                    format: float
                     minimum: 0
-                    maximum: 100
-                    description: Percentage of scan completion.
+                    maximum: 1
+                    description: Fractional scan completion (0.0-1.0).
+                  message:
+                    type: string
+                    description: Human-readable progress message.
         '404':
           description: Scan not found.
         '500':
@@ -100,25 +104,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  uuid:
-                    type: string
-                    format: uuid
-                  pqcReadinessScore:
-                    type: number
-                    format: float
-                    description: Overall PQC readiness score (0.0-10.0).
-                  algorithmRatios:
-                    type: object
-                    additionalProperties:
-                      type: number
-                      format: float
-                    description: Ratios of different cryptographic algorithms (e.g., ECC, AES).
-                  inventory:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/CryptographicAsset'
+                $ref: '#/components/schemas/InventoryResponse'
         '404':
           description: Scan not found.
         '500':
@@ -142,7 +128,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RepositoryFileTree'
+                $ref: '#/components/schemas/HeatmapNode'
         '404':
           description: Scan not found.
         '500':
@@ -161,7 +147,7 @@ paths:
           required: true
           description: UUID of the scan to retrieve recommendations for.
         - in: query
-          name: algorithmType
+          name: algorithm
           schema:
             type: string
           description: Optional filter for cryptographic algorithm type (e.g., RSA, ECC).
@@ -176,15 +162,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  uuid:
-                    type: string
-                    format: uuid
-                  recommendations:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Recommendation'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Recommendation'
         '404':
           description: Scan not found.
         '500':
@@ -192,78 +172,85 @@ paths:
 
 components:
   schemas:
-    CryptographicAsset:
+    AlgorithmRatio:
       type: object
       properties:
-        id:
-          type: string
-          description: Unique identifier for the asset.
-        algorithmType:
+        name:
           type: string
           description: Type of cryptographic algorithm (e.g., ECC, AES, RSA).
-        filePath:
-          type: string
-          description: File path where the asset was found.
-        lineNumbers:
-          type: array
-          items:
-            type: integer
-          description: Line numbers where the asset appears.
-        riskScore:
+        ratio:
           type: number
           format: float
-          description: Aggregated risk score for the asset (0.0-10.0).
+          description: Ratio of the algorithm usage (0.0-1.0).
+      required: [name, ratio]
+
+    InventoryTableItem:
+      type: object
+      properties:
+        algorithm:
+          type: string
+          description: Type of cryptographic algorithm (e.g., ECC, AES, RSA).
+        count:
+          type: integer
+          description: Occurrence count for the algorithm.
+        locations:
+          type: array
+          items:
+            type: string
+          description: List of file paths and line numbers.
+      required: [algorithm, count, locations]
+
+    InventoryResponse:
+      type: object
+      properties:
+        pqc_readiness_score:
+          type: number
+          format: float
+          description: Overall PQC readiness score (0.0-10.0).
+        algorithm_ratios:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlgorithmRatio'
+        inventory_table:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryTableItem'
+      required: [pqc_readiness_score, algorithm_ratios, inventory_table]
 
     Recommendation:
       type: object
       properties:
-        id:
-          type: string
-          description: Unique identifier for the recommendation.
-        priorityRank:
+        priority_rank:
           type: integer
           description: Priority ranking of the recommendation.
-        issueName:
-          type: string
-          description: Descriptive name of the issue.
-        estimatedEffort:
+        estimated_effort:
           type: string
           description: Estimated effort to resolve (e.g., "3 M/D").
-        aiRecommendation:
+        ai_recommendation:
           type: string
           description: AI-generated refactoring guidance (Markdown formatted).
-        recommendedPQCAlgorithm:
-          type: string
-          description: Name of the recommended PQC algorithm.
-        context:
-          type: string
-          description: Contextual information for filtering (e.g., payment logic).
+      required: [priority_rank, estimated_effort, ai_recommendation]
 
-    RepositoryFile:
+    HeatmapNode:
       type: object
       properties:
-        filePath:
+        name:
           type: string
-          description: Absolute or relative path to the file.
-        fileName:
+          description: Display name of the node.
+        path:
           type: string
-          description: Name of the file.
-        fileType:
+          description: Relative path of the node.
+        type:
           type: string
-          enum: [file, folder]
-          description: Type of the entry (file or folder).
-        aggregatedRiskScore:
+          enum: [dir, file]
+          description: Node type.
+        risk_score:
           type: number
           format: float
-          description: Aggregated risk score for the file/folder.
+          description: Risk score (0.0-1.0).
         children:
           type: array
           items:
-            $ref: '#/components/schemas/RepositoryFile'
-          description: List of child files/folders (if `fileType` is 'folder').
-
-    RepositoryFileTree:
-      type: array
-      items:
-        $ref: '#/components/schemas/RepositoryFile'
-      description: Root level of the file system tree.
+            $ref: '#/components/schemas/HeatmapNode'
+          description: Child nodes (directories only).
+      required: [name, path, type, risk_score, children]

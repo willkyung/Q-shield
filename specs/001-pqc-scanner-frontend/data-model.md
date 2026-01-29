@@ -12,39 +12,36 @@ Represents a PQC analysis of a repository. This entity will be used to track the
 
 -   **Attributes**:
     -   `uuid`: string (Unique identifier for the scan)
-    -   `status`: enum (e.g., `IN_PROGRESS`, `COMPLETED`, `FAILED`, `PENDING` - Current status of the scan)
-    -   `results`: object (Associated scan results, structure to be detailed by backend API contract)
+    -   `status`: enum (`QUEUED`, `RUNNING`, `COMPLETED`, `FAILED` - Current status of the scan)
+    -   `progress`: number (Fractional completion, 0.0-1.0)
+    -   `message`: string (Human-readable status message)
+    -   `results`: object (Associated scan results: inventory, heatmap, recommendations)
 
-### 2. Cryptographic Asset
+### 2. Inventory Summary
 
-An identified instance of a cryptographic algorithm or primitive within the source code. These assets are the core focus of the PQC analysis.
+Aggregated inventory output used for readiness scoring and tables in the dashboard.
 
 -   **Attributes**:
-    -   `id`: string (Unique identifier for the asset - *inferred*)
-    -   `algorithmType`: string (e.g., `ECC`, `AES`, `RSA` - Type of cryptographic algorithm)
-    -   `location`: object (Details including `filePath`: string, `lineNumbers`: array of integers - Location within the source code)
-    -   `riskScore`: number (Aggregated risk score for the asset, e.g., 0.0-10.0)
+    -   `pqc_readiness_score`: number (0.0-10.0)
+    -   `algorithm_ratios`: array of objects `{ name, ratio }`
+    -   `inventory_table`: array of objects `{ algorithm, count, locations }`
 
 ### 3. Recommendation
 
 A suggested action item for PQC migration. These provide actionable insights for users to address cryptographic vulnerabilities.
 
 -   **Attributes**:
-    -   `id`: string (Unique identifier for the recommendation - *inferred*)
-    -   `priorityRank`: integer (Priority ranking of the recommendation)
-    -   `issueName`: string (Descriptive name of the issue)
-    -   `estimatedEffort`: string (e.g., `3 M/D` - Estimated effort to resolve)
-    -   `aiRecommendation`: string (Markdown formatted AI-generated refactoring guidance)
-    -   `recommendedPQCAlgorithm`: string (Name of the recommended PQC algorithm)
-    -   `context`: string (e.g., `payment logic` - Contextual information for filtering - *inferred from user story*)
+    -   `priority_rank`: integer (Priority ranking of the recommendation)
+    -   `estimated_effort`: string (e.g., `3 M/D` - Estimated effort to resolve)
+    -   `ai_recommendation`: string (Markdown formatted AI-generated refactoring guidance)
 
-### 4. Repository File
+### 4. Repository File (Heatmap Node)
 
 A file within the scanned repository. This entity is crucial for visualizing the repository structure and risk heatmap.
 
 -   **Attributes**:
-    -   `filePath`: string (Absolute or relative path to the file)
-    -   `fileName`: string (Name of the file - *inferred*)
-    -   `fileType`: string (e.g., `folder`, `file` - *inferred for tree structure*)
-    -   `aggregatedRiskScore`: number (Aggregated risk score for the file, influencing heatmap coloring)
-    -   `children`: array of `RepositoryFile` (For representing the file tree structure - *inferred*)
+    -   `name`: string (Display name of the file/folder)
+    -   `path`: string (Relative path to the file/folder)
+    -   `type`: string (`dir` or `file`)
+    -   `risk_score`: number (Aggregated risk score for the file/folder, 0.0-1.0)
+    -   `children`: array of `Repository File` nodes
